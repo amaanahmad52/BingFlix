@@ -13,7 +13,7 @@ export const TMDB_CONFIG={
 
 export const getMovies = async ({ query }) => {
   const url = query
-    ? `${TMDB_CONFIG.BASE_URL}/search/movie?query=${encodeURIComponent(query)}&api_key=${TMDB_CONFIG.API_KEY}`
+    ? `${TMDB_CONFIG.BASE_URL}/search/movie?query=${query}&api_key=${TMDB_CONFIG.API_KEY}`
     : `${TMDB_CONFIG.BASE_URL}/discover/movie?sort_by=popularity.desc&api_key=${TMDB_CONFIG.API_KEY}`;
 
   try {
