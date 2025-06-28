@@ -18,26 +18,48 @@ import { icons } from "../../constants/icons";
 import { images } from "../../constants/images";
 import useFetch from "../../hooks/useFetch";
 
+// ✅ Genre Map moved outside component
+const getGenre = {
+  Action: 28,
+  Adventure: 12,
+  Animation: 16,
+  Comedy: 35,
+  Crime: 80,
+  Documentary: 99,
+  Drama: 18,
+  Family: 10751,
+  Fantasy: 14,
+  History: 36,
+  Horror: 27,
+  Music: 10402,
+  Mystery: 9648,
+  Romance: 10749,
+  "Science Fiction": 878,
+  "TV Movie": 10770,
+  Thriller: 53,
+  War: 10752,
+  Western: 37,
+};
+
 const Index = () => {
   const router = useRouter();
 
   // SEARCHING MOVIE
   const [value, setValue] = useState("");
   const handleSearch = () => {
-    router.push(`/search`);
+    if (value.trim()) {
+      router.push(`/search?query=${encodeURIComponent(value)}`);
+    }
   };
 
-  //getting trending movies
-
+  // TRENDING MOVIES
   const {
     data: appwriteTrendingMovies,
     loading: TrendingLoading,
     error: TrendingError,
-  } = useFetch({
-    fetchingFunction: () => getTrendingMovies(),
-  });
+  } = useFetch({fetchingFunction: () => getTrendingMovies(),});
 
-  // GETTING MOVIES FOR HOMEPAGE
+  // GETTING GENERAL MOVIES
   const {
     data: moviesData,
     loading,
@@ -46,45 +68,24 @@ const Index = () => {
     fetchingFunction: () => getMovies({ query: "" }),
   });
 
-  //create a map to get the genre id
-  const getGenre = {
-    Action: 28,
-    Adventure: 12,
-    Animation: 16,
-    Comedy: 35,
-    Crime: 80,
-    Documentary: 99,
-    Drama: 18,
-    Family: 10751,
-    Fantasy: 14,
-    History: 36,
-    Horror: 27,
-    Music: 10402,
-    Mystery: 9648,
-    Romance: 10749,
-    "Science Fiction": 878,
-    "TV Movie": 10770,
-    Thriller: 53,
-    War: 10752,
-    Western: 3,
-  };
-  //GETTING MOVIES FOR HOMEPAGE
-  // NEW STATE FOR MULTIPLE GENRES
+  // GENRE MOVIES
   const [genreMovies, setGenreMovies] = useState({});
 
   useEffect(() => {
     const fetchAllGenreMovies = async () => {
-      const result = {};
-      for (const genreName in getGenre) {
-        const genreNumber = getGenre[genreName];
-        try {
-          const data = await getMoviesWithgenre({ genreNumber });
-          result[genreName] = data;
-        } catch (err) {
-          console.log(`Error fetching ${genreName}:`, err.message);
-        }
+      try {
+        const results = await Promise.all(
+          Object.entries(getGenre).map(async ([genreName, genreNumber]) => {
+            const data = await getMoviesWithgenre({ genreNumber });
+            return [genreName, data];
+          })
+        );
+
+        const genreMovieMap = Object.fromEntries(results);
+        setGenreMovies(genreMovieMap);
+      } catch (err) {
+        console.log("Error fetching genres:", err.message);
       }
-      setGenreMovies(result);
     };
 
     fetchAllGenreMovies();
@@ -105,12 +106,11 @@ const Index = () => {
       >
         <Image source={icons.logo} className="w-12 h-10 mt-20 mb-5 mx-auto" />
 
-        {loading || !moviesData || !genreMovies ? (
+        {loading || !moviesData || Object.keys(genreMovies).length === 0 ? (
           <Spinner visible={true} />
         ) : error ? (
           <Text className="text-red-500 text-center py-4">{error.message}</Text>
         ) : (
-          // if no loading and no error, show the actual content
           <View className="flex-1 mt-1 flex-col">
             <SearchBar
               placeholder="Search a Movie"
@@ -119,9 +119,7 @@ const Index = () => {
               handleSearch={handleSearch}
             />
 
-            {/* <Text className="text-lg text-white font-bold mt-5 mb-3">
-              Latest Movies
-            </Text> */}
+            {/* TRENDING MOVIES */}
             {!TrendingError &&
               !TrendingLoading &&
               appwriteTrendingMovies &&
@@ -132,8 +130,12 @@ const Index = () => {
                   </Text>
                   <FlatList
                     data={appwriteTrendingMovies}
-                    renderItem={({ item,index}) => <TrendingMoviesCard movie={item}  index={index}/>}
-                    keyExtractor={(item) => item.id.toString()}
+                    renderItem={({ item, index }) => (
+                      <TrendingMoviesCard movie={item} index={index} />
+                    )}
+                    keyExtractor={(item) =>
+                      item?.id?.toString() ?? Math.random().toString()
+                    }
                     horizontal
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={{
@@ -145,6 +147,7 @@ const Index = () => {
                 </View>
               )}
 
+            {/* GENRE-WISE MOVIES */}
             {Object.entries(genreMovies).map(([genreName, movies]) => (
               <View key={genreName} className="mb-6">
                 <Text className="text-lg text-white font-bold mt-5 mb-3">
@@ -152,8 +155,12 @@ const Index = () => {
                 </Text>
                 <FlatList
                   data={movies}
-                  renderItem={({ item }) => <MoviesCard movie={item} />}
-                  keyExtractor={(item) => item.id.toString()}
+                  renderItem={({ item, index }) => (
+                    <MoviesCard movie={item}/>
+                  )}
+                  keyExtractor={(item) =>
+                    item?.id?.toString() ?? Math.random().toString()
+                  }
                   horizontal
                   showsHorizontalScrollIndicator={false}
                   contentContainerStyle={{ gap: 10, paddingHorizontal: 10 }}
